@@ -34,8 +34,7 @@ class CascadeEvaluator(BaseEvaluator):
         sample_score_fn: Optional[Callable] = None,
         parallel: bool = True,
     ) -> None:
-        super().__init__()
-        self.logger = get_logger(__name__)
+        self.logger = get_logger()
 
         # Initialize the LLM evaluator
         llm_evaluator_type = llm_evaluator.pop('type')
@@ -59,10 +58,7 @@ class CascadeEvaluator(BaseEvaluator):
             raise ValueError(
                 'Either rule_evaluator or sample_score_fn must be provided')
 
-    def sample_score(self,
-                     prediction: str,
-                     reference: str,
-                     test_set=None) -> Dict[str, Any]:
+    def sample_score(self, prediction: str, reference: str) -> Dict[str, Any]:
         """Score a single sample using sample_score_fn or rule_evaluator.
 
         Args:
@@ -74,20 +70,19 @@ class CascadeEvaluator(BaseEvaluator):
         """
         if self.sample_score_fn:
             # Use user-provided function to evaluate a single sample
-            result = self.sample_score_fn(prediction, reference, test_set)
+            result = self.sample_score_fn(prediction, reference)
             if not isinstance(result, dict):
                 # Ensure result is a dictionary with at least 'correct' field
                 result = {
                     'correct': bool(result),
-                    'pred': prediction,
+                    'extracted_pred': prediction,
                     'answer': reference,
                 }
             return result
         else:
             # Use rule_evaluator to evaluate a single sample by calling
             # the score method with single-element lists
-            result = self.rule_evaluator.score([prediction], [reference],
-                                               [test_set])
+            result = self.rule_evaluator.score([prediction], [reference])
             if 'details' in result and len(result['details']) > 0:
                 return result['details'][0]
             else:
@@ -109,7 +104,17 @@ class CascadeEvaluator(BaseEvaluator):
         """
         if 'prediction' in llm_detail:
             response = llm_detail['prediction'].strip().upper()
-            return response == 'A' or response.startswith('CORRECT')
+            # return response == 'A' or response.startswith('CORRECT')
+            # if response == '<TRUE>' or response.startswith('CORRECT'):
+            if '<TRUE>' in response or response.startswith('CORRECT'):
+                return True
+            # elif response == '<FALSE>' or response.startswith('INCORRECT'):
+            elif '<FALSE>' in response or response.startswith('INCORRECT'):
+                return False
+            # elif response == '<NO ANSWER>' or response.startswith('NO ANSWER'):
+            elif '<NO ANSWER>' in response or response.startswith('NO ANSWER'):
+                return 'NO ANSWER'
+            return 'unmatched'
         elif 'correct' in llm_detail:
             return llm_detail['correct']
         elif 'score' in llm_detail:
@@ -142,14 +147,7 @@ class CascadeEvaluator(BaseEvaluator):
         failed_indices = []
 
         for i, (pred, ref) in enumerate(zip(predictions, references)):
-            if test_set is not None:
-                test_item = test_set[i]
-            else:
-                test_item = None
-            # Apply prediction postprocessing for each sample
-            [pred] = self.rule_evaluator.pred_postprocess([pred])
-
-            result = self.sample_score(pred, ref, test_item)
+            result = self.sample_score(pred, ref)
             result['evaluation_method'] = 'rule'
             details.append({'rule_evaluation': result})
 
@@ -193,11 +191,8 @@ class CascadeEvaluator(BaseEvaluator):
             original_out_dir = getattr(self.llm_evaluator, '_out_dir', None)
             self.llm_evaluator._out_dir = f'{self._out_dir}_llm_judge'
 
-            # Generate random hash suffix
-            llm_results_path = f'{self.llm_evaluator._out_dir}_replica{self.dataset_replica_idx}.json'  # noqa
-            self.logger.info(f'LLM evaluation results will be saved at '
-                             f'{llm_results_path}')
             # Check if results already exist to avoid re-evaluation
+            llm_results_path = f'{self.llm_evaluator._out_dir}.json'
             if os.path.exists(llm_results_path):
                 self.logger.info(
                     f'Loading existing LLM evaluation results from '
@@ -227,15 +222,7 @@ class CascadeEvaluator(BaseEvaluator):
                 # Use GenericLLMEvaluator to evaluate samples
                 # unset dataset_cfg for GenericLLMEvaluator to
                 # directly use test_set
-                # self.llm_evaluator.output_path = llm_results_path
-                self.llm_evaluator._dataset_replica_idx = \
-                    self._dataset_replica_idx
                 self.llm_evaluator.dataset_cfg = None
-
-                # Apply prediction postprocessing to for LLM evaluator
-                failed_predictions = self.llm_evaluator.pred_postprocess(
-                    failed_predictions)
-
                 llm_results = self.llm_evaluator.score(
                     predictions=failed_predictions,
                     references=failed_references,
@@ -258,9 +245,6 @@ class CascadeEvaluator(BaseEvaluator):
 
             # Update the details for samples that were evaluated by LLM
             for i, llm_detail in enumerate(llm_details.values()):
-                # Add dataset replica index to LLM evaluation result
-                llm_detail['dataset_replica_idx'] = self.dataset_replica_idx
-
                 original_index = failed_indices[i]
                 # Store original rule-based evaluation result
                 rule_result = details[original_index].copy()
@@ -308,16 +292,6 @@ class CascadeEvaluator(BaseEvaluator):
                 self.logger.info(
                     f'LLM evaluation: {llm_correct}/{llm_evaluated} '
                     f'correct ({llm_accuracy:.2f}%)')
-
-            # Append cascade correctness flag to each sample
-            for item in details:
-                _rule_correct = item['rule_evaluation'].get('correct', False)
-                if 'llm_evaluation' in item:
-                    _llm_correct = item['llm_evaluation'].get(
-                        'llm_correct', False)
-                else:
-                    _llm_correct = False
-                item['cascade_correct'] = _rule_correct or _llm_correct
 
             result = {
                 'accuracy': final_accuracy,

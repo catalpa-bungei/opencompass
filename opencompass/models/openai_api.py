@@ -25,7 +25,7 @@ OPENAI_API_BASE = os.path.join(
 OPENAISDK_API_BASE = os.environ.get('OPENAI_BASE_URL',
                                     'https://api.openai.com/v1/')
 
-O1_MODEL_LIST = ['o1', 'o3', 'o4']
+O1_MODEL_LIST = ['o1', 'o3']
 
 
 @MODELS.register_module()
@@ -69,8 +69,6 @@ class OpenAI(BaseAPIModel):
             Defaults to None.
         extra_body (Dict, optional): Add additional JSON properties to
             the request
-        think_tag (str, optional): The tag to use for reasoning content.
-            Defaults to '</think>'.
     """
 
     is_api: bool = True
@@ -90,11 +88,11 @@ class OpenAI(BaseAPIModel):
         mode: str = 'none',
         logprobs: Optional[bool] = False,
         top_logprobs: Optional[int] = None,
+        # max_out_len: Optional[int] = None,
         temperature: Optional[float] = None,
         tokenizer_path: Optional[str] = None,
         extra_body: Optional[Dict] = None,
         verbose: bool = False,
-        think_tag: str = '</think>',
     ):
 
         super().__init__(
@@ -109,6 +107,7 @@ class OpenAI(BaseAPIModel):
         import tiktoken
 
         self.tiktoken = tiktoken
+        # self.max_out_len = max_out_len
         self.temperature = temperature
         assert mode in ['none', 'front', 'mid', 'rear']
         self.mode = mode
@@ -117,7 +116,6 @@ class OpenAI(BaseAPIModel):
         self.tokenizer_path = tokenizer_path
         self.hf_tokenizer = None
         self.extra_body = extra_body
-        self.think_tag = think_tag
 
         if isinstance(key, str):
             if key == 'ENV':
@@ -150,6 +148,8 @@ class OpenAI(BaseAPIModel):
 
         self.path = path
 
+        print("\nThis is OpenAI class in repo, and the max_seq_len is: ", max_seq_len)
+
     def generate(
         self,
         inputs: List[PromptType],
@@ -174,7 +174,12 @@ class OpenAI(BaseAPIModel):
         """
         if self.temperature is not None:
             temperature = self.temperature
+        # if self.max_out_len is not None:
+        #     max_out_len = self.max_out_len
 
+        print("\nThis is OpenAI class, and the temperature is: ", temperature)
+        max_out_len = 8192
+        print("\nMax out len is: ", max_out_len)
         with ThreadPoolExecutor() as executor:
             results = list(
                 tqdm(
@@ -207,6 +212,13 @@ class OpenAI(BaseAPIModel):
             str: The generated string.
         """
         assert isinstance(input, (str, PromptList))
+
+        if self.temperature is not None:
+            temperature = self.temperature
+        # if self.max_out_len is not None:
+        #     max_out_len = self.max_out_len
+        print("This is OpenAI class _generate in repo, and the temperature is: ", temperature)
+        print("This is OpenAI class _generate in repo, and the max_out_len is: ", max_out_len)
 
         messages, max_out_len = self._preprocess_messages(
             input, max_out_len, self.max_seq_len, self.mode,
@@ -323,28 +335,7 @@ class OpenAI(BaseAPIModel):
                 if self.logprobs:
                     return response['choices']
                 else:
-                    # Extract content and reasoning_content from response
-                    message = response['choices'][0]['message']
-                    content = message.get('content', '') or ''
-                    reasoning_content = message.get('reasoning_content',
-                                                    '') or ''
-
-                    # Handle reasoning_content similar to OpenAISDK
-                    if reasoning_content:
-                        if self.verbose:
-                            self.logger.info(
-                                'Extracting reasoning content and tags.'
-                                'Reasoning Content: %s, \n'
-                                'Tags: %s, \n'
-                                'Content: %s', reasoning_content,
-                                self.think_tag, content)
-
-                        if content:
-                            return reasoning_content + self.think_tag + content
-                        else:
-                            return reasoning_content
-                    else:
-                        return content.strip()
+                    return response['choices'][0]['message']['content'].strip()
             except KeyError:
                 if 'error' in response:
                     if response['error']['code'] == 'rate_limit_exceeded':
@@ -556,27 +547,28 @@ class OpenAI(BaseAPIModel):
 
 class OpenAISDK(OpenAI):
 
-    def __init__(self,
-                 path: str = 'gpt-3.5-turbo',
-                 max_seq_len: int = 16384,
-                 query_per_second: int = 1,
-                 rpm_verbose: bool = False,
-                 retry: int = 2,
-                 key: str | List[str] = 'ENV',
-                 org: str | List[str] | None = None,
-                 meta_template: Dict | None = None,
-                 openai_api_base: str | List[str] = OPENAISDK_API_BASE,
-                 openai_proxy_url: Optional[str] = None,
-                 mode: str = 'none',
-                 logprobs: bool | None = False,
-                 top_logprobs: int | None = None,
-                 temperature: float | None = None,
-                 tokenizer_path: str | None = None,
-                 extra_body: Dict | None = None,
-                 verbose: bool = False,
-                 http_client_cfg: dict = {},
-                 status_code_mappings: dict = {},
-                 think_tag: str = '</think>'):
+    def __init__(
+        self,
+        path: str = 'gpt-3.5-turbo',
+        max_seq_len: int = 16384,
+        query_per_second: int = 1,
+        rpm_verbose: bool = False,
+        retry: int = 2,
+        key: str | List[str] = 'ENV',
+        org: str | List[str] | None = None,
+        meta_template: Dict | None = None,
+        openai_api_base: str | List[str] = OPENAISDK_API_BASE,
+        openai_proxy_url: Optional[str] = None,
+        mode: str = 'none',
+        logprobs: bool | None = False,
+        top_logprobs: int | None = None,
+        temperature: float | None = None,
+        tokenizer_path: str | None = None,
+        extra_body: Dict | None = None,
+        verbose: bool = False,
+        status_code_mappings: dict = {},
+        think_tag: str = '</think>',
+    ):
         super().__init__(
             path,
             max_seq_len,
@@ -604,20 +596,20 @@ class OpenAISDK(OpenAI):
         else:
             self.openai_api_base = openai_api_base
 
-        if self.proxy_url or http_client_cfg:
-            if self.proxy_url:
-                http_client_cfg['proxies'] = {
-                    'http://': self.proxy_url,
-                    'https://': self.proxy_url,
-                }
+        if self.proxy_url is None:
+            self.openai_client = OpenAI(base_url=self.openai_api_base,
+                                        api_key=key)
+        else:
+            proxies = {
+                'http://': self.proxy_url,
+                'https://': self.proxy_url,
+            }
 
-        self.openai_client = OpenAI(
-            base_url=self.openai_api_base,
-            api_key=key,
-            http_client=httpx.Client(
-                **http_client_cfg) if http_client_cfg else None,
-        )
-
+            self.openai_client = OpenAI(
+                base_url=self.openai_api_base,
+                api_key=key,
+                http_client=httpx.Client(proxies=proxies),
+            )
         if self.verbose:
             self.logger.info(f'Used openai_client: {self.openai_client}')
         self.status_code_mappings = status_code_mappings
@@ -646,6 +638,9 @@ class OpenAISDK(OpenAI):
 
         assert isinstance(input, (str, PromptList))
 
+        print("This is OpenAI SDK class in repo, and the temperature is: ", temperature)
+        max_out_len = 8192
+        print("\nMax out len is: ", max_out_len)
         messages, max_out_len = self._preprocess_messages(
             input, max_out_len, self.max_seq_len, self.mode,
             self.get_token_len)
@@ -678,17 +673,16 @@ class OpenAISDK(OpenAI):
             try:
                 if self.verbose:
                     self.logger.info('Start calling OpenAI API')
-
                 responses = self.openai_client.chat.completions.create(
                     **query_data, timeout=timeout)  # timeout in seconds
                 if self.verbose:
                     self.logger.info(
-                        'Successfully get response from OpenAI API '
-                        'with query: %s', query_data)
+                        'Successfully get response from OpenAI API')
                     try:
                         self.logger.info(responses)
                     except Exception:
                         pass  # noqa F841
+
                 # Check if response is empty or content is empty
                 if (not responses.choices or not responses.choices[0].message
                         or
@@ -697,13 +691,6 @@ class OpenAISDK(OpenAI):
                         'reasoning_content',
                         '',
                     ))):  # noqa: E125
-                    # There is case that server does not return any content
-                    if responses.choices[0].finish_reason == 'stop':
-                        self.logger.info(
-                            'Server does not return any content '
-                            'and stop reason is <stop>, '
-                            'the input query is: %s', query_data)
-                        return ''
                     self.logger.error(
                         'Failed to extract content from the responses. '
                         'Please check the API response for detail information.'

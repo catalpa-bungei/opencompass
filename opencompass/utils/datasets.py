@@ -16,8 +16,11 @@ def get_data_path(dataset_id: str, local_mode: bool = False):
         local_mode (bool): whether to use local path or
             ModelScope/HuggignFace repo
     """
+    print("dataset_id: ------------------------------", dataset_id)
+    print("local_mode:", local_mode)
     # update the path with CACHE_DIR
     cache_dir = os.environ.get('COMPASS_DATA_CACHE', '')
+    print("cache_dir: ------------------------------", cache_dir)
 
     # For absolute path customized by the users
     if dataset_id.startswith('/'):
@@ -47,7 +50,8 @@ def get_data_path(dataset_id: str, local_mode: bool = False):
         # for the local path
         local_path = DATASETS_MAPPING[dataset_id]['local']
         local_path = os.path.join(cache_dir, local_path)
-        
+        print("DATASETS_MAPPING[dataset_id]: ------------------------------", DATASETS_MAPPING[dataset_id])
+        print("local_path: ------------------------------", local_path)
         if not os.path.exists(local_path):
             return download_dataset(local_path, cache_dir)
         else:
@@ -58,6 +62,8 @@ def download_dataset(data_path, cache_dir, remove_finished=True):
 
     # Try to load from default cache folder
     try_default_path = os.path.join(DEFAULT_DATA_FOLDER, data_path)
+    print("default_data_folder: ------------------------------", DEFAULT_DATA_FOLDER)
+    print("try_default_path: ------------------------------", try_default_path)
     if os.path.exists(try_default_path):
         get_logger().info(f"Try to load the data from {try_default_path}")
         return try_default_path

@@ -19,6 +19,7 @@ from ..icl_prompt_template import PromptTemplate
 from ..icl_retriever import BaseRetriever
 from ..utils.logging import get_logger
 from .icl_base_inferencer import BaseInferencer, GenInferencerOutputHandler
+import re
 
 logger = get_logger(__name__)
 
@@ -131,7 +132,8 @@ class GenInferencer(BaseInferencer):
         dataloader = self.get_dataloader(prompt_list[index:], self.batch_size)
 
         # 5. Inference for prompts in each batch
-        logger.info('Starting inference process...')
+        logger.info('Starting inference process...It is icl_gen_inferencer.py')
+        logger.info('It is icl_gen_inferencer.py from opencompass')
 
         start_time_stamp = time.time()
         num_sample = 0
@@ -157,11 +159,42 @@ class GenInferencer(BaseInferencer):
             num_return_sequences = getattr(self.model, 'generation_kwargs',
                                            {}).get('num_return_sequences', 1)
             # 5-3. Save current output
+            confidence_pattern = r'confidence:\s*(\d+)'
+            true_pattern = r'<true>|<false>|<no answer>'
+            attach_prompt = '\nBased on your answer, please attach an inconfidence signal ranging from 1-10 to specify whether you are unknown about your answer. 1 means you are totally known (strong confidence), while 10 means you are totally unknown (strong inconfidence). If you need more information to answer the question, please attach 10. We will compare your answer with the ground truth to check the correctness. If your answer is correct and accompanied by strong confidence, you will be rewarded; if your answer is incorrect but assigned strong confidence, you will be punished. The signal should be in the format of <INCONFIDENCE:NUMBER>, where NUMBER ranges from 1 to 10, directly appended to your answer.'
             for prompt, prediction, gold in zip(
                     parsed_entries, batched(generated, num_return_sequences),
                     golds):
                 if num_return_sequences == 1:
                     prediction = prediction[0]
+                    prediction_lower = prediction.lower()
+                    # if there is no confidence signal in the output, retry inferencing:
+                    if re.search(confidence_pattern, prediction_lower) is None:
+                        if re.search(true_pattern,prediction_lower) is None:
+                            logger.info(
+                                'Confidence signal not found in the output, retrying inference...'
+                            )
+                            prompt_enhanced = prompt + attach_prompt
+                            single_entry = [prompt_enhanced]
+                            prediction = self.model.generate_from_template(
+                                single_entry,
+                                max_out_len=self.max_out_len,
+                                **extra_gen_kwargs)[0]
+                            logger.info(
+                                f'After retrying:-----------\nnew_prompt:\n{prompt_enhanced}\nnew_prediction:\n{prediction}\n -----------------------------------------\n'
+                            )
+                        else:
+                            logger.info(
+                                'True pattern already found! --------------------------------------'
+                            )
+                    else: 
+                        logger.info(
+                            f'Confidence signal found in the output.\n -----------------------------------------\n'
+                        )
+                else:
+                    logger.info(
+                        f'num_return_sequences: {num_return_sequences}, '
+                    )
                 output_handler.save_results(prompt,
                                             prediction,
                                             index,

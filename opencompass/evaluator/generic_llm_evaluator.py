@@ -1,6 +1,5 @@
 import os
 import os.path as osp
-from copy import deepcopy
 from typing import Dict, List, Optional
 
 import mmengine
@@ -15,8 +14,6 @@ from opencompass.registry import (DICT_POSTPROCESSORS, ICL_PROMPT_TEMPLATES,
 from opencompass.utils import build_dataset_from_cfg, build_model_from_cfg
 from opencompass.utils.logging import get_logger
 
-logger = get_logger(__name__)
-
 
 class GenericLLMEvaluator(BaseEvaluator):
     """Generic LLM evaluator.
@@ -26,7 +23,6 @@ class GenericLLMEvaluator(BaseEvaluator):
         judge_cfg (ConfigDict): The config for Judge LLM.
         dataset_cfg (ConfigDict): The config for dataset.
         pred_postprocessor (ConfigDict): The config for postprocessor.
-            used for the prediction results.
         dict_postprocessor (ConfigDict): The config for postprocessor,
             used for evaluation results dict.
     """
@@ -40,7 +36,10 @@ class GenericLLMEvaluator(BaseEvaluator):
         dict_postprocessor: Optional[ConfigDict] = None,
         keep_predictions: bool = False,
     ) -> None:
-        super().__init__(pred_postprocessor=pred_postprocessor)
+
+        print('GenericLLMEvaluator init---------\n')
+        print('prompt_template: ', prompt_template)
+        self.logger = get_logger()
         # If judge_cfg is not provided, fall back to the default configuration
         if not judge_cfg:
             self.judge_cfg = self.default_judge_cfg
@@ -52,19 +51,20 @@ class GenericLLMEvaluator(BaseEvaluator):
 
         # Build Dataset
         self.dataset_cfg = dataset_cfg
+        print('dataset_cfg assigned:------------------------------- ', dataset_cfg)
         assert dataset_cfg is not None, 'dataset_cfg is None'
 
         self.dict_postprocessor = dict_postprocessor
         self.pred_postprocessor = pred_postprocessor
 
-    def build_inferencer(self):
+    def build_inferencer(self, ):
         """Build LLM Inference."""
+        output_path = self._out_dir
+        self.output_path = f'{output_path}.json'
+        out_dir, out_name = osp.split(output_path)
+        out_name = f'{out_name}.json'
 
-        self.output_path = f'{self._out_dir}_replica{self.dataset_replica_idx}.json'  # noqa
-        logger.info(f'LLM judge details will be saved at:{self.output_path}')
-        out_dir, out_name = osp.split(self.output_path)
-
-        logger.info(
+        self.logger.info(
             f'Set self.output_path to {self.output_path} for current task')
         assert self.output_path is not None, 'output_path is None'
 
@@ -101,21 +101,40 @@ class GenericLLMEvaluator(BaseEvaluator):
 
         # -------------- Build Inferencer ----------------
         self.build_inferencer()
+
         # ---------------- Process Predictions ------------------
+        original_predictions = predictions
+        # print("predictions before postprocess: -----------------------", original_predictions)
         predictions = self.pred_postprocess(predictions)
+        # print("predictions after postprocess: -----------------------", predictions)
 
         # For Single Round Dialogue
-        prediction_dict = {'prediction': predictions, 'obj_gold': references}
+        prediction_dict = {'prediction': predictions, 'obj_gold': references, 'original_prediction': original_predictions}
 
         # ---------------- Build Dataset for LLM Judge -----------------
+        print("dataset_cfg: -----------------------", self.dataset_cfg)
         if self.dataset_cfg:
             dataset = build_dataset_from_cfg(self.dataset_cfg)
+            length_test = len(dataset.test)
+            print('number of rows in dataset test: -----------------------', len(dataset.test))
             for k, v in prediction_dict.items():
+                print(f'Adding {k} to dataset---------\n')
+                print(f'Adding {v} to dataset------------------\n')
+                if len(v) < length_test:
+                    # dataset['test'] = dataset['test'][:len(v)]
+                    pass
+                print("length of dataset test after modification: -----------------------", len(dataset.test))
                 dataset.reader.dataset['test'] = dataset.test.add_column(k, v)
                 dataset.reader.input_columns.append(k)
 
             if references:
+                print(f'Adding reference to dataset---------\n')
+                print(f'Adding {references} to dataset---------\n')
                 dataset.reader.input_columns.append('reference')
+                if len(references) < length_test:
+                    # dataset.reader.dataset['test'] = dataset.reader.dataset['test'][:len(references)]
+                    pass
+                print("length of dataset test after modification: -----------------------", len(dataset.test))
                 dataset.reader.dataset['test'] = dataset.test.add_column(
                     'reference', references)
         else:
@@ -125,10 +144,19 @@ class GenericLLMEvaluator(BaseEvaluator):
             if test_set is not None:
                 # If test_set is provided, use it as the base
                 # Ensure necessary columns exist
+                print("columns in test_set: -----------------------\n", test_set.column_names)
+                print("length of test_set: -----------------------\n", len(test_set))
+                print("length of references: -----------------------\n", len(references))
+                print("references are: -----------------------\n", references)
                 if 'prediction' not in test_set.column_names:
                     test_set = test_set.add_column('prediction', predictions)
                 if 'reference' not in test_set.column_names:
                     test_set = test_set.add_column('reference', references)
+                # very important, the original 'reference' column seems to be empty
+                test_set = test_set.remove_columns('prediction')
+                test_set = test_set.add_column('prediction', predictions)
+                test_set = test_set.add_column('obj_gold', references)
+                test_set = test_set.add_column('original_prediction', original_predictions)
 
                 # Prepare input_columns and data dictionary
                 input_columns = test_set.column_names
@@ -136,9 +164,12 @@ class GenericLLMEvaluator(BaseEvaluator):
                     column: test_set[column]
                     for column in test_set.column_names
                 }
+                print("test_set become: -----------------------\n", test_set)
+                print("input_columns become: -----------------------\n", input_columns)
             else:
                 # Original default dataset building logic
                 input_columns = list(prediction_dict.keys())
+                print("whether references exist: -----------------------\n", references)
                 if references:
                     input_columns.append('reference')
                 data_dict = prediction_dict.copy()
@@ -180,7 +211,7 @@ class GenericLLMEvaluator(BaseEvaluator):
         if self.dict_postprocessor is None:
             return output
         else:
-            kwargs = deepcopy(self.dict_postprocessor)
+            kwargs = self.dict_postprocessor
             proc = DICT_POSTPROCESSORS.get(kwargs.pop('type'))
             sig = inspect.signature(proc)
             if 'dataset' in sig.parameters:
@@ -194,8 +225,7 @@ class GenericLLMEvaluator(BaseEvaluator):
     @property
     def default_judge_cfg(self):
         from opencompass.models import OpenAISDK
-        logger.info('Please set your judge model in `OC_JUDGE_MODEL`, \
-            `OC_JUDGE_API_KEY`, `OC_JUDGE_API_BASE` environment variables.')
+
         DEFAULT_JUDGE_CFG = dict(
             type=OpenAISDK,
             path=os.environ['OC_JUDGE_MODEL'],

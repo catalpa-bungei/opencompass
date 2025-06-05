@@ -3,9 +3,6 @@ from typing import Dict, List, Optional, Union
 from datasets import Dataset, DatasetDict, concatenate_datasets
 
 from opencompass.openicl import DatasetReader
-from opencompass.utils import get_logger
-
-logger = get_logger()
 
 
 class BaseDataset:
@@ -26,8 +23,7 @@ class BaseDataset:
                 'idx': idx
             },
                                   with_indices=True,
-                                  writer_batch_size=16,
-                                  load_from_cache_file=False)
+                                  writer_batch_size=16)
             dataset = concatenate_datasets([dataset] * n)
             self.dataset = dataset
         else:
@@ -38,8 +34,7 @@ class BaseDataset:
                     'idx': idx
                 },
                                                 with_indices=True,
-                                                writer_batch_size=16,
-                                                load_from_cache_file=False)
+                                                writer_batch_size=16)
                 dataset[key] = concatenate_datasets([dataset[key]] * n)
                 self.dataset[key] = dataset[key]
         self._init_reader(**reader_cfg)

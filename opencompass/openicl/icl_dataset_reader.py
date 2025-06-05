@@ -90,6 +90,8 @@ class DatasetReader:
             })
 
         # Normalize the dataset so that it has only "train" and "test" splits.
+        print("In opencompass/openicl/icl_dataset_reader.py, dataset.keys():",
+              self.dataset.keys())
         for origin_split, mapped_split, split_range in [[
                 train_split, 'train', train_range
         ], [test_split, 'test', test_range]]:

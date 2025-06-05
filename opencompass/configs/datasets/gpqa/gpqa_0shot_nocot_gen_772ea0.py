@@ -3,10 +3,22 @@ from opencompass.openicl.icl_retriever import ZeroRetriever
 from opencompass.openicl.icl_inferencer import GenInferencer
 from opencompass.datasets import GPQADataset, GPQA_Simple_Eval_postprocess, GPQAEvaluator
 
+# # openai_simple_eval prompt
+# align_prompt = """
+# Answer the following multiple choice question. The last line of your response should be of the following format: 'ANSWER: $LETTER' (without quotes) where LETTER is one of ABCD.
+
+# {question}
+
+# A) {A}
+# B) {B}
+# C) {C}
+# D) {D}
+# """.strip()
+
 # openai_simple_eval prompt
 align_prompt = """
-Answer the following multiple choice question. The last line of your response should be of the following format: 'ANSWER: $LETTER' (without quotes) where LETTER is one of ABCD.
-
+Answer the following multiple choice question. The last but not least line of your response should be of the following format: 'ANSWER: $LETTER' (without quotes) where LETTER is one of ABCD.
+Based on your response, please attach a confidence signal "known" or "unknown" to specify whether you are sure about your answer or not. The last line should be in the format of <known> or <unknown>.
 {question}
 
 A) {A}

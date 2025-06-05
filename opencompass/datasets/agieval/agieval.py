@@ -64,24 +64,30 @@ class AGIEvalDataset_v2(BaseDataset):
                 dataset.append(d)
             dataset = Dataset.from_list(dataset)
         else:
-            filename = osp.join(path, name + '.jsonl')
-            with open(filename, encoding='utf-8') as f:
-                data = [json.loads(line.strip()) for line in f]
-            dataset = []
-            for item in data:
-                passage = item['passage'] if item['passage'] else ''
-                question = passage + item['question']
-                options = '\n'.join(item['options']) if item['options'] else ''
-                if item['label']:
-                    if isinstance(item['label'], list):
-                        label = ''.join(item['label'])
+            for split in ['dev', 'test']:
+                # filename = osp.join(path, name + '.jsonl')
+                filename = osp.join(path, split, f'{name}.jsonl')
+                raw_data = []
+                with open(filename, encoding='utf-8') as f:
+                    data = [json.loads(line.strip()) for line in f]
+                # dataset = []
+                dataset = {}
+                for item in data:
+                    passage = item['passage'] if item['passage'] else ''
+                    question = passage + item['question']
+                    options = '\n'.join(item['options']) if item['options'] else ''
+                    if item['label']:
+                        if isinstance(item['label'], list):
+                            label = ''.join(item['label'])
+                        else:
+                            label = item['label']
                     else:
-                        label = item['label']
-                else:
-                    label = item['answer']
-                d = {'question': question, 'options': options, 'label': label}
-                dataset.append(d)
-            dataset = Dataset.from_list(dataset)
+                        label = item['answer']
+                    d = {'question': question, 'options': options, 'label': label}
+                    # dataset.append(d)
+                    raw_data.append(d)
+                # dataset = Dataset.from_list(dataset)
+                dataset[split] = Dataset.from_list(raw_data)
         return dataset
 
 

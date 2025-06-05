@@ -19,6 +19,7 @@ class MMLUDataset(BaseDataset):
         path = get_data_path(path)
         dataset = DatasetDict()
         if environ.get('DATASET_SOURCE') == 'ModelScope':
+            print("Loading dataset from ModelScope...")
             from modelscope import MsDataset
             for split in ['dev', 'test']:
                 # 从 ModelScope 加载数据
@@ -37,6 +38,7 @@ class MMLUDataset(BaseDataset):
                     })
                 dataset[split] = Dataset.from_list(dataset_list)
         else:
+            print("Loading dataset from local path...")
             for split in ['dev', 'test']:
                 raw_data = []
                 filename = osp.join(path, split, f'{name}_{split}.csv')

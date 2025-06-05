@@ -6,7 +6,9 @@ from opencompass.datasets import AGIEvalDataset_v2, AGIEvalEvaluator
 from opencompass.utils.text_postprocessors import first_option_postprocess, first_capital_postprocess_multi
 
 agieval_reader_cfg = dict(
-    input_columns=['question', 'options'], output_column='label')
+    input_columns=['question', 'options'], output_column='label', train_split='test')
+
+attached_prompt = 'Based on your answer, please attach an inconfidence signal ranging from 1-10 to specify whether you are unknown about your answer. 1 means you are totally known (strong confidence), while 10 means you are totally unknown (strong inconfidence). If you need more information to answer the question, please attach 10. We will compare your answer with the ground truth to check the correctness. If your answer is correct and accompanied by strong confidence, you will be rewarded; if your answer is incorrect but assigned strong confidence, you will be punished. The signal should be in the format of <INCONFIDENCE:NUMBER>, where NUMBER ranges from 1 to 10, directly appended to your answer.'
 
 agieval_single_choice_sets = [
     'gaokao-chinese',
@@ -73,13 +75,14 @@ for _name in agieval_single_choice_sets:
     if _name in agieval_chinese_sets:
         _hint = '答案是： '
     else:
-        _hint = 'The answer is '
+        _hint = 'The answer is: '
     agieval_infer_cfg = dict(
         prompt_template=dict(
             type=PromptTemplate,
             template=dict(round=[
                 dict(
-                    role='HUMAN', prompt=f'{{question}}\n{{options}}\n{_hint}')
+                    role='HUMAN', 
+                    prompt=f'{{question}}\n{{options}}\n{_hint}\n {attached_prompt}\n')
             ])),
         retriever=dict(type=ZeroRetriever),
         inferencer=dict(type=GenInferencer, max_out_len=1024))
@@ -92,7 +95,9 @@ for _name in agieval_single_choice_sets:
     agieval_datasets.append(
         dict(
             type=AGIEvalDataset_v2,
-            path='opencompass/agieval',
+            # path='opencompass/agieval',
+            # path = './data/agieval/',
+            path = '/root/.cache/modelscope/hub/datasets/opencompass/agieval/',
             name=_name,
             abbr='agieval-' + _name,
             setting_name='zero-shot',
@@ -110,7 +115,8 @@ for _name in agieval_multiple_choices_sets:
             type=PromptTemplate,
             template=dict(round=[
                 dict(
-                    role='HUMAN', prompt=f'{{question}}\n{{options}}\n{_hint}')
+                    role='HUMAN', 
+                    prompt=f'{{question}}\n{{options}}\n{_hint}\n {attached_prompt}\n')
             ])),
         retriever=dict(type=ZeroRetriever),
         inferencer=dict(type=GenInferencer, max_out_len=1024))
@@ -122,7 +128,9 @@ for _name in agieval_multiple_choices_sets:
     agieval_datasets.append(
         dict(
             type=AGIEvalDataset_v2,
-            path='opencompass/agieval',
+            # path='opencompass/agieval',
+            # path = './data/agieval/',
+            path = '/root/.cache/modelscope/hub/datasets/opencompass/agieval/',
             name=_name,
             abbr='agieval-' + _name,
             setting_name='zero-shot',
@@ -139,7 +147,8 @@ for _name in agieval_cloze_sets:
         prompt_template=dict(
             type=PromptTemplate,
             template=dict(
-                round=[dict(role='HUMAN', prompt=f'{{question}}\n{_hint}')])),
+                round=[dict(role='HUMAN', 
+                            prompt=f'{{question}}\n{_hint}\n {attached_prompt}\n')])),
         retriever=dict(type=ZeroRetriever),
         inferencer=dict(type=GenInferencer, max_out_len=1024))
 
@@ -148,7 +157,9 @@ for _name in agieval_cloze_sets:
     agieval_datasets.append(
         dict(
             type=AGIEvalDataset_v2,
-            path='opencompass/agieval',
+            # path='opencompass/agieval',
+            # path = './data/agieval/',
+            path = '/root/.cache/modelscope/hub/datasets/opencompass/agieval/',
             name=_name,
             abbr='agieval-' + _name,
             setting_name='zero-shot',

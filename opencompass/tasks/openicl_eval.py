@@ -146,19 +146,15 @@ class OpenICLEvalTask(BaseTask):
             preds = []
             i = 1
             while osp.exists(osp.realpath(filename)):
-                try:
-                    sub_preds = mmengine.load(filename)
-                    preds.extend(
-                        [sub_preds[str(i)] for i in range(len(sub_preds))])
-                    filename = root + f'_{i}' + ext
-                    i += 1
-                except Exception as e:
-                    self.logger.error(
-                        f'Error loading prediction file {filename}: {e}')
-                    break
+                sub_preds = mmengine.load(filename)
+                preds.extend(
+                    [sub_preds[str(i)] for i in range(len(sub_preds))])
+                filename = root + f'_{i}' + ext
+                i += 1
 
         pred_dicts = copy.deepcopy(preds)
         preds = {k: [pred.get(k) for pred in preds] for k in preds[0]}
+        # print("in openicl_eval.py, preds: -------------", preds)
 
         pred_strs = preds.pop('prediction', None)
 
@@ -235,10 +231,12 @@ class OpenICLEvalTask(BaseTask):
                       [sample[self.output_column] for sample in test_set])
         # Build evaluator from config
         evaluator_cfg = self.eval_cfg.get('evaluator', {})
+        print('evaluator_cfg:----------------------------------\n', evaluator_cfg)
         evaluator_type = evaluator_cfg.get('type')
         if isinstance(evaluator_type, str):
             evaluator_type = ICL_EVALUATORS.get(evaluator_type)
 
+        print('evaluator_type:----------------------------------\n', evaluator_type)
         # Prepare evaluator inputs
         evaluator_cfg_copy = copy.deepcopy(evaluator_cfg)
         evaluator_cfg_copy.pop('type', None)
