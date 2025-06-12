@@ -8,14 +8,14 @@ from opencompass.openicl.icl_prompt_template import PromptTemplate
 from opencompass.openicl.icl_retriever import ZeroRetriever
 from opencompass.openicl.icl_inferencer import GenInferencer
 
-# The user only needs to change: inference model, dataset_type
+# The user only needs to change: inference model, dataset_type, and output directory.
 
 # Import your judge model configuration
 with read_base():
     from opencompass.configs.models.qwen2_5.api_qwen_2_5_vl_72b_instruct import (
         models as judge_model,
     )
-    from opencompass.configs.models.qwen2_5.api_qwen_2_5_vl_72b_instruct import (
+    from opencompass.configs.models.qwen2_5.api_qwen_2_5_vl_32b_instruct import (
         models as inference_model,
     )
     from opencompass.configs.datasets.mmlu.mmlu_gen import \
@@ -26,8 +26,8 @@ with read_base():
         gpqa_datasets  # noqa: F401, F403
 
 # Output directory
-work_dir = './outputs/llm_judge_eval_parallel/qwen2_5_vl_72b/'
-dataset_type = 'mmlu'
+work_dir = './outputs/llm_judge_eval_parallel/qwen2_5_vl_32b/'
+dataset_type = 'gpqa'
 
 
 if dataset_type == 'mmlu':

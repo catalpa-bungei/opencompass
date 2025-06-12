@@ -109,7 +109,9 @@ class AccEvaluator(HuggingfaceEvaluator):
             label: idx
             for idx, label in enumerate(set(map(str, references)))
         }
-        pred_set = set(predictions)
+        # pred_set = set(predictions)
+        # Xuqing's modification:
+        pred_set = set(str(pred) for pred in predictions)
         for pred in pred_set:
             if str(pred) not in mapping_to_int_dict.keys():
                 mapping_to_int_dict[str(pred)] = len(mapping_to_int_dict)

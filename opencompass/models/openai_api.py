@@ -177,7 +177,7 @@ class OpenAI(BaseAPIModel):
         # if self.max_out_len is not None:
         #     max_out_len = self.max_out_len
 
-        print("\nThis is OpenAI class, and the temperature is: ", temperature)
+        print("\nThis is OpenAI class generate(), and the temperature is: ", temperature)
         max_out_len = 8192
         print("\nMax out len is: ", max_out_len)
         with ThreadPoolExecutor() as executor:

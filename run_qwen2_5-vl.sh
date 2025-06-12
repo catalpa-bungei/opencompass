@@ -3,7 +3,7 @@ export PYTHONPATH=/fs-computility/ai-shen/yangxuqing/opencompass/
 # source ~/.bashrc
 cd /fs-computility/ai-shen/yangxuqing/opencompass
 
-python run.py yangxuqing_trial/qwen_2_5_vl_7B.py
+# python run.py yangxuqing_trial/qwen_2_5_vl_7B.py
 # python run.py yangxuqing_trial/qwen_2_5_vl_32B.py
 # python run.py yangxuqing_trial/qwen_2_5_vl_72B.py
 # python run.py yangxuqing_trial/qwen_3_32B.py

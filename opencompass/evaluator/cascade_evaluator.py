@@ -103,18 +103,21 @@ class CascadeEvaluator(BaseEvaluator):
             bool: Whether the answer is correct according to the LLM judge.
         """
         if 'prediction' in llm_detail:
-            response = llm_detail['prediction'].strip().upper()
-            # return response == 'A' or response.startswith('CORRECT')
-            # if response == '<TRUE>' or response.startswith('CORRECT'):
-            if '<TRUE>' in response or response.startswith('CORRECT'):
-                return True
-            # elif response == '<FALSE>' or response.startswith('INCORRECT'):
-            elif '<FALSE>' in response or response.startswith('INCORRECT'):
-                return False
-            # elif response == '<NO ANSWER>' or response.startswith('NO ANSWER'):
-            elif '<NO ANSWER>' in response or response.startswith('NO ANSWER'):
-                return 'NO ANSWER'
-            return 'unmatched'
+            if isinstance(llm_detail['prediction'], str):
+                response = llm_detail['prediction'].strip().upper()
+                # return response == 'A' or response.startswith('CORRECT')
+                # if response == '<TRUE>' or response.startswith('CORRECT'):
+                if '<TRUE>' in response or response.startswith('CORRECT'):
+                    return True
+                # elif response == '<FALSE>' or response.startswith('INCORRECT'):
+                elif '<FALSE>' in response or response.startswith('INCORRECT'):
+                    return False
+                # elif response == '<NO ANSWER>' or response.startswith('NO ANSWER'):
+                elif '<NO ANSWER>' in response or response.startswith('NO ANSWER'):
+                    return 'NO ANSWER'
+                return 'unmatched'
+            elif isinstance(llm_detail['prediction'], list):
+                return "list"
         elif 'correct' in llm_detail:
             return llm_detail['correct']
         elif 'score' in llm_detail:
@@ -146,6 +149,26 @@ class CascadeEvaluator(BaseEvaluator):
         failed_references = []
         failed_indices = []
 
+        print("length of test set: ", len(test_set))
+
+        if isinstance(predictions[0], list):
+            inference_repeat = len(predictions[0])
+            expanded_indices = []
+            for i in range(len(test_set)):
+                expanded_indices.extend([i] * inference_repeat)
+            test_set = test_set.select(expanded_indices)
+            expanded_predictions = []
+            expanded_references = []
+            for i in range(len(predictions)):
+                # Flatten the list of predictions and references
+                expanded_predictions.extend(predictions[i])
+                expanded_references.extend(references[i]* len(predictions[i]))
+            print("length of expanded_predictions: ",
+                  len(expanded_predictions))
+            predictions = expanded_predictions
+            references = expanded_references
+            
+
         for i, (pred, ref) in enumerate(zip(predictions, references)):
             result = self.sample_score(pred, ref)
             result['evaluation_method'] = 'rule'
@@ -157,6 +180,7 @@ class CascadeEvaluator(BaseEvaluator):
                 failed_predictions.append(pred)
                 failed_references.append(ref)
                 failed_indices.append(i)
+                print("failed indices: ", failed_indices)
 
         # Calculate initial accuracy based on rule evaluation
         initial_correct = sum(
@@ -246,6 +270,7 @@ class CascadeEvaluator(BaseEvaluator):
             # Update the details for samples that were evaluated by LLM
             for i, llm_detail in enumerate(llm_details.values()):
                 original_index = failed_indices[i]
+                print("i is: ", i, "original_index: ", original_index)
                 # Store original rule-based evaluation result
                 rule_result = details[original_index].copy()
                 rule_correct = rule_result['rule_evaluation'].get(
@@ -293,6 +318,7 @@ class CascadeEvaluator(BaseEvaluator):
                     f'LLM evaluation: {llm_correct}/{llm_evaluated} '
                     f'correct ({llm_accuracy:.2f}%)')
 
+            print("length of details: ", len(details))
             result = {
                 'accuracy': final_accuracy,
                 'cascade_stats': {

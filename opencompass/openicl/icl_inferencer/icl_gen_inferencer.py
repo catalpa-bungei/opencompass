@@ -152,21 +152,42 @@ class GenInferencer(BaseInferencer):
                 extra_gen_kwargs['min_out_len'] = self.min_out_len
             with torch.no_grad():
                 parsed_entries = self.model.parse_template(entry, mode='gen')
+                # Xuqing's modification
+                # repeat each entry string for inference_repeat times
+                inference_repeat = 1
+                repeated_entries = []
+                true_pattern = r'<true>|<false>|<no answer>'
+                print(f"Orinigal length of entry: {len(entry)}")
+                probing_results = self.model.generate_from_template(
+                    entry[0:3], max_out_len=self.max_out_len, **extra_gen_kwargs)
+                for probing_prediction in probing_results:
+                    probing_prediction_lower = probing_prediction.lower()
+                    if re.search(true_pattern, probing_prediction_lower) is not None:
+                        logger.info(
+                            'True pattern in judge output already found! It is evaluation! --------------------------------------'
+                        )
+                        inference_repeat = 1
+                for e in entry:
+                    repeated_entries.extend([e] * inference_repeat)
+                entry = repeated_entries
+                print(f"New length of repeated entry: {len(entry)}")
+                # end of Xuqing's modification
                 results = self.model.generate_from_template(
                     entry, max_out_len=self.max_out_len, **extra_gen_kwargs)
                 generated = results
 
             num_return_sequences = getattr(self.model, 'generation_kwargs',
-                                           {}).get('num_return_sequences', 1)
+                                           {}).get('num_return_sequences', inference_repeat)
             # 5-3. Save current output
             confidence_pattern = r'confidence:\s*(\d+)'
             true_pattern = r'<true>|<false>|<no answer>'
-            attach_prompt = '\nBased on your answer, please attach an inconfidence signal ranging from 1-10 to specify whether you are unknown about your answer. 1 means you are totally known (strong confidence), while 10 means you are totally unknown (strong inconfidence). If you need more information to answer the question, please attach 10. We will compare your answer with the ground truth to check the correctness. If your answer is correct and accompanied by strong confidence, you will be rewarded; if your answer is incorrect but assigned strong confidence, you will be punished. The signal should be in the format of <INCONFIDENCE:NUMBER>, where NUMBER ranges from 1 to 10, directly appended to your answer.'
+            attach_prompt = '\nBased on your answer, please attach a confidence signal ranging from 1-100 to specify whether you are unknown about your answer. 1 means you are totally unknown (strong inconfidence), while 100 means you are totally known (strong confidence). If you need more information to answer the question, please attach 1. We will compare your answer with the ground truth to check the correctness. If your answer is correct and accompanied by strong confidence, you will be rewarded; if your answer is incorrect but assigned strong confidence, you will be punished. The signal should be in the format of <CONFIDENCE:NUMBER>, where NUMBER ranges from 1 to 100, directly appended to your answer.\n'
             for prompt, prediction, gold in zip(
                     parsed_entries, batched(generated, num_return_sequences),
                     golds):
                 if num_return_sequences == 1:
                     prediction = prediction[0]
+                    # Xuqing's modification
                     prediction_lower = prediction.lower()
                     # if there is no confidence signal in the output, retry inferencing:
                     if re.search(confidence_pattern, prediction_lower) is None:
@@ -185,7 +206,7 @@ class GenInferencer(BaseInferencer):
                             )
                         else:
                             logger.info(
-                                'True pattern already found! --------------------------------------'
+                                'True pattern in judge output already found! It is evaluation! --------------------------------------'
                             )
                     else: 
                         logger.info(
@@ -195,6 +216,38 @@ class GenInferencer(BaseInferencer):
                     logger.info(
                         f'num_return_sequences: {num_return_sequences}, '
                     )
+                    # print("repeated predictions:", prediction)
+                    # Note that the above prediction is a tuple
+                    prediction = list(prediction)
+                    for i in range(inference_repeat):
+                        each_prediction = prediction[i]
+                        each_prediction_lower = each_prediction.lower()
+                        # if there is no confidence signal in the output, retry inferencing:
+                        if re.search(confidence_pattern, each_prediction_lower) is None:
+                            if re.search(true_pattern, each_prediction_lower) is None:
+                                logger.info(
+                                    'Confidence signal not found in the output, retrying inference...'
+                                )
+                                prompt_enhanced = prompt + attach_prompt
+                                single_entry = [prompt_enhanced]
+                                each_prediction = self.model.generate_from_template(
+                                    single_entry,
+                                    max_out_len=self.max_out_len,
+                                    **extra_gen_kwargs)[0]
+                                prediction[i] = each_prediction
+                                logger.info(
+                                    f'After retrying:-----------\nnew_prompt:\n{prompt_enhanced}\nnew_prediction:\n{each_prediction}\n -----------------------------------------\n'
+                                )
+                            else:
+                                logger.info(
+                                    'True pattern in judge output already found! It is evaluation! --------------------------------------'
+                                )
+                        else:
+                            logger.info(
+                                f'Confidence signal found in the output.\n -----------------------------------------\n'
+                            )
+                    prediction = tuple(prediction)
+                # Xuqing's modification ends
                 output_handler.save_results(prompt,
                                             prediction,
                                             index,

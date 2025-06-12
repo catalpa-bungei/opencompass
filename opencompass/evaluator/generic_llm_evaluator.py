@@ -160,12 +160,42 @@ class GenericLLMEvaluator(BaseEvaluator):
 
                 # Prepare input_columns and data dictionary
                 input_columns = test_set.column_names
+                print("test_set becomes: -----------------------\n", test_set)
+                print("input_columns become: -----------------------\n", input_columns)
+                inference_repeat = 1
+                if isinstance(predictions[0], list):
+                    inference_repeat = len(predictions[0])
+                    original_test_set_length = len(predictions)
+                # original_predictions is a list of original prediction lists
+                # predictions is a list of postprocessed predictions lists
+                # we want to make sure each row corresponds to a string, instead of a list
+                # expand all the columns to match the length of expanded original_predictions, i.e., multiply by inference_repeat
+                if inference_repeat > 1:
+                    print("\nInference_repeat is greater than 1, expanding predictions and references")
+                    expanded_original_predictions = []
+                    expanded_predictions = []
+                    expanded_references = []
+                    for i in range(original_test_set_length):
+                        for j in range(inference_repeat):
+                            expanded_original_predictions.append(
+                                original_predictions[i][j])
+                            expanded_predictions.append(predictions[i][j])
+                            expanded_references.append(references[i])
+                    expanded_indices = []
+                    for i in range(len(test_set)):
+                        expanded_indices.extend([i] * inference_repeat)
+                    test_set = test_set.select(expanded_indices)
+                    test_set = test_set.remove_columns('prediction')
+                    test_set = test_set.remove_columns('obj_gold')
+                    test_set = test_set.remove_columns('original_prediction')
+                    test_set = test_set.add_column('prediction', expanded_predictions)
+                    test_set = test_set.add_column('obj_gold', expanded_references)
+                    test_set = test_set.add_column('original_prediction', expanded_original_predictions)
+
                 data_dict = {
                     column: test_set[column]
                     for column in test_set.column_names
                 }
-                print("test_set become: -----------------------\n", test_set)
-                print("input_columns become: -----------------------\n", input_columns)
             else:
                 # Original default dataset building logic
                 input_columns = list(prediction_dict.keys())

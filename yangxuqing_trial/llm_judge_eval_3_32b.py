@@ -27,7 +27,7 @@ with read_base():
 
 # Output directory
 work_dir = './outputs/llm_judge_eval_parallel/qwen3_32b/'
-dataset_type = 'mmlu'
+dataset_type = 'gpqa'
 
 
 if dataset_type == 'mmlu':

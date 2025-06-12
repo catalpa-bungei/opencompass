@@ -7,6 +7,7 @@ from opencompass.datasets import generic_llmjudge_postprocess
 from opencompass.openicl.icl_prompt_template import PromptTemplate
 from opencompass.openicl.icl_retriever import ZeroRetriever
 from opencompass.openicl.icl_inferencer import GenInferencer
+import copy as copy_yxq
 
 # The user only needs to change: inference model, dataset_type, and work_dir
 
@@ -28,6 +29,7 @@ with read_base():
 # Output directory
 work_dir = './outputs/llm_judge_eval_parallel/qwen2_5_vl_72b/'
 dataset_type = 'gpqa'
+inference_repeat = 5
 
 
 if dataset_type == 'mmlu':
@@ -39,6 +41,14 @@ elif dataset_type == 'agieval':
 elif dataset_type == 'gpqa':
     datasets = gpqa_datasets
     test_range = '[0:100]'
+
+# for i in range(inference_repeat-1):
+#     # Create a deepcopy of the datasets, avoid modifying the inside dictionary
+#     new_dataset = copy_yxq.deepcopy(datasets)
+#     for j in range(len(new_dataset)):
+#         new_dataset[j]['abbr'] = f"{new_dataset[j]['abbr']}_repeat_{i+1}"
+#         print(f"New dataset j abbr: {new_dataset[j]['abbr']}")
+#     datasets += new_dataset  # Repeat the datasets for multiple inferences
 
 
 dataset_names = []

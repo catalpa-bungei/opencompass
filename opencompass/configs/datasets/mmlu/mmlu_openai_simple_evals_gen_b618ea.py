@@ -14,7 +14,7 @@ with read_base():
 
 QUERY_TEMPLATE = """
 Answer the following multiple choice question. The last line of your response should be of the following format: 'ANSWER: $LETTER' (without quotes) where LETTER is one of ABCD. Think step by step before answering.
-\n Based on your answer, please attach an inconfidence signal ranging from 1-10 to specify whether you are unknown about your answer. 1 means you are totally known (strong confidence), while 10 means you are totally unknown (strong inconfidence). If you need more information to answer the question, please attach 10. We will compare your answer with the ground truth to check the correctness. If your answer is correct and accompanied by strong confidence, you will be rewarded; if your answer is incorrect but assigned strong confidence, you will be punished. The signal should be in the format of <INCONFIDENCE:NUMBER>, where NUMBER ranges from 1 to 10, directly appended to your answer.\n
+\n Based on your answer, please attach a confidence signal ranging from 1-100 to specify whether you are unknown about your answer. 1 means you are totally unknown (strong inconfidence), while 100 means you are totally known (strong confidence). If you need more information to answer the question, please attach 1. We will compare your answer with the ground truth to check the correctness. If your answer is correct and accompanied by strong confidence, you will be rewarded; if your answer is incorrect but assigned strong confidence, you will be punished. The signal should be in the format of <CONFIDENCE:NUMBER>, where NUMBER ranges from 1 to 100, directly appended to your answer.\n
 {input}
 
 A) {A}
