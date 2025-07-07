@@ -2,6 +2,17 @@
 conda activate opencompass-vllm
 # qwen2.5-vl-7B
 vllm serve /fs-computility/ai-shen/shared/hf-hub/models--Qwen--Qwen2.5-VL-7B-Instruct/snapshots/5b5eecc7efc2c3e86839993f2689bbbdf06bd8d4 --dtype half --port 8007 --tensor-parallel-size 2 --gpu-memory-utilization 0.9 --limit_mm_per_prompt image=10 --max_model_len 20000 --served-model-name Qwen2.5-VL-7B-Instruct
+vllm serve /fs-computility/wangxuhong/yangxuqing/verl/merged_model/qwen2_5_vl_7b_promptv7_T5_temp0.7-beta0.1_alpha0/global_step_162 --dtype half --port 8007 --tensor-parallel-size 2 --gpu-memory-utilization 0.9 --limit_mm_per_prompt image=10 --max_model_len 20000 --served-model-name Qwen2.5-VL-7B-Instruct
+vllm serve /fs-computility/wangxuhong/yangxuqing/verl/merged_model/qwen2_5_vl_7b_promptv7_T5_temp0.7-beta0.1_alpha1/global_step_162 --dtype half --port 8007 --tensor-parallel-size 2 --gpu-memory-utilization 0.9 --limit_mm_per_prompt image=10 --max_model_len 20000 --served-model-name Qwen2.5-VL-7B-Instruct
+vllm serve /fs-computility/wangxuhong/yangxuqing/verl/merged_model/qwen2_5_vl_7b_promptv7_T5_temp0.7-beta0.1_alpha0.5/global_step_162 --dtype half --port 8007 --tensor-parallel-size 2 --gpu-memory-utilization 0.9 --limit_mm_per_prompt image=10 --max_model_len 20000 --served-model-name Qwen2.5-VL-7B-Instruct
+vllm serve /fs-computility/wangxuhong/yangxuqing/verl/merged_model/qwen2_5_vl_7b_promptv7_T5_temp0.7-beta0.1_ece_we0.1_alpha0.5/global_step_162 --dtype half --port 8007 --tensor-parallel-size 2 --gpu-memory-utilization 0.9 --limit_mm_per_prompt image=10 --max_model_len 20000 --served-model-name Qwen2.5-VL-7B-Instruct
+
+# qwen2.5-7B
+vllm serve /fs-computility/ai-shen/shared/hf-hub/models--Qwen--Qwen2.5-7B-Instruct --dtype half --port 8007 --tensor-parallel-size 2 --gpu-memory-utilization 0.9  --max_model_len 20000 --served-model-name Qwen2.5-7B-Instruct
+vllm serve /fs-computility/wangxuhong/yangxuqing/verl/merged_model/qwen2_5_7b_c2rm-ece_w0.1_alpha0.5_step_162 --dtype half --port 8007 --tensor-parallel-size 2 --gpu-memory-utilization 0.9  --max_model_len 20000 --served-model-name Qwen2.5-7B-Instruct
+vllm serve /fs-computility/wangxuhong/yangxuqing/verl/merged_model/qwen2_5_7b_c2rm-beta0.1_alpha0_step_162 --dtype half --port 8007 --tensor-parallel-size 2 --gpu-memory-utilization 0.9  --max_model_len 20000 --served-model-name Qwen2.5-7B-Instruct
+vllm serve /fs-computility/wangxuhong/yangxuqing/verl/merged_model/qwen2_5_7b_c2rm-ece_we0.1_wd1_window100_alpha0_step_162 --dtype half --port 8007 --tensor-parallel-size 2 --gpu-memory-utilization 0.9  --max_model_len 20000 --served-model-name Qwen2.5-7B-Instruct
+vllm serve /fs-computility/wangxuhong/yangxuqing/verl/merged_model/qwen2_5_7b_c2rm-ece_we0.1_wd1_window100_alpha1_step_162 --dtype half --port 8007 --tensor-parallel-size 2 --gpu-memory-utilization 0.9  --max_model_len 20000 --served-model-name Qwen2.5-7B-Instruct
 
 # qwen2.5-vl-32B
 export CUDA_VISIBLE_DEVICES=2,3

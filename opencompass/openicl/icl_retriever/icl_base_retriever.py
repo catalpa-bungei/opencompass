@@ -83,6 +83,7 @@ class BaseRetriever:
             ice_template (`Optional[PromptTemplate]`): The template for
                 in-context example. Defaults to None.
         """
+        print("This is generate_ice in icl_base_retriever.py, idx_list is:", idx_list)
         if ice_template is None:
             assert len(
                 idx_list

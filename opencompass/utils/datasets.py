@@ -24,6 +24,7 @@ def get_data_path(dataset_id: str, local_mode: bool = False):
 
     # For absolute path customized by the users
     if dataset_id.startswith('/'):
+        print("Absolute path already found: ------------------------------", dataset_id)
         return dataset_id
 
     # For relative path, with CACHE_DIR

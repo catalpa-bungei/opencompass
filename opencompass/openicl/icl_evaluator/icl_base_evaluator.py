@@ -93,6 +93,9 @@ class BaseEvaluator:
         # same length if both are provided
         if ('predictions' in score_kwargs and 'references' in score_kwargs
                 and score_kwargs['references'] is not None):
+            print('Checking predictions and references length...')
+            print('Predictions length:', len(score_kwargs['predictions']))
+            print('References length:', len(score_kwargs['references']))
             if len(score_kwargs['predictions']) != len(
                     score_kwargs['references']):
                 raise ValueError(

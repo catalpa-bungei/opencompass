@@ -333,6 +333,7 @@ class OpenAI(BaseAPIModel):
             self.logger.debug(str(response))
             try:
                 if self.logprobs:
+                    print("This is OpenAI class _generate in repo, and the logprobs is: ", response['choices'][0]['logprobs'])
                     return response['choices']
                 else:
                     return response['choices'][0]['message']['content'].strip()

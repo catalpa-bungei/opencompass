@@ -23,7 +23,7 @@ class GPQADataset(BaseDataset):
         with open(os.path.join(path, name), 'r', encoding='utf-8') as f:
             reader = csv.reader(f, delimiter=',')
             for row in reader:
-                if row[7] == 'Question':
+                if row[7] == 'Question': # Skip header row
                     continue
                 cnt = cnt + 1
                 question = row[7]
@@ -40,6 +40,10 @@ class GPQADataset(BaseDataset):
                         line['answer'] = 'ABCD'[i]
                         break
                 data.append(line)
+        # print(f"This is gpqa.py, length of data is {len(data)}, cnt is {cnt}")
+        # # print the answers
+        # for i in range(len(data)):
+        #     print(f"Index:{i}, Answer: {data[i]['answer']}, Options: {data[i]['A']}, {data[i]['B']}, {data[i]['C']}, {data[i]['D']}")
         dataset = Dataset.from_list(data)
         return dataset
 
@@ -101,6 +105,8 @@ class GPQASimpleEvalDataset(BaseDataset):
             correct_answer = 'ABCD'[correct_index]
             entry['options'] = correct_options
             entry['answer'] = correct_answer
+
+        print(f"This is gpqa.py SimpleEval, length of data is {len(data_list)}")
 
         dataset = Dataset.from_list(data_list)
         return dataset

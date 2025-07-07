@@ -163,8 +163,15 @@ class SizePartitioner(BasePartitioner):
 
     def get_factor(self, dataset: ConfigDict) -> int:
         infer_cfg = dataset.infer_cfg
-        template = (infer_cfg.prompt_template.template if 'prompt_template'
-                    in infer_cfg else infer_cfg.ice_template.template)
+        # template = (infer_cfg.prompt_template.template if 'prompt_template'
+        #             in infer_cfg else infer_cfg.ice_template.template)
+        if 'prompt_template' in infer_cfg:
+            if 'template' in infer_cfg.prompt_template:
+                template = infer_cfg.prompt_template.template
+            else:
+                template = None
+        else:
+            template = infer_cfg.ice_template.template
         # If it's the Gen template, the dataset size will be multiplied by the
         # self.gen_task_coef
         factor = self.gen_task_coef

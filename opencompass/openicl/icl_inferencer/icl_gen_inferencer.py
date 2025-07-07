@@ -96,7 +96,9 @@ class GenInferencer(BaseInferencer):
 
         # 2. Get results of retrieval process
         ice_idx_list = retriever.retrieve()
-
+        print("This is icl_gen_inferencer.py, retriever.dataset_reader is:", retriever.dataset_reader)
+        print("\nThis is icl_gen_inferencer.py, length of ice_idx_list:", len(ice_idx_list))
+        
         # 3. Generate prompts for testing input
         prompt_list = self.get_generation_prompt_list_from_retriever_indices(
             ice_idx_list,
@@ -130,6 +132,7 @@ class GenInferencer(BaseInferencer):
         # 4. Wrap prompts with Dataloader
         logger.info('Starting build dataloader')
         dataloader = self.get_dataloader(prompt_list[index:], self.batch_size)
+        print("This is icl_gen_inferencer.py, prompt_list index:", index, "length of prompt_list:", len(prompt_list[index:]),)
 
         # 5. Inference for prompts in each batch
         logger.info('Starting inference process...It is icl_gen_inferencer.py')
@@ -143,6 +146,7 @@ class GenInferencer(BaseInferencer):
             else:
                 entry = datum
                 golds = [None for _ in range(len(entry))]
+            print("This is icl_gen_inferencer.py, length of entry:", len(entry))
             # 5-1. Inference with local model
             extra_gen_kwargs = {}
             sig = inspect.signature(self.model.generate)
@@ -181,7 +185,7 @@ class GenInferencer(BaseInferencer):
             # 5-3. Save current output
             confidence_pattern = r'confidence:\s*(\d+)'
             true_pattern = r'<true>|<false>|<no answer>'
-            attach_prompt = '\nBased on your answer, please attach a confidence signal ranging from 1-100 to specify whether you are unknown about your answer. 1 means you are totally unknown (strong inconfidence), while 100 means you are totally known (strong confidence). If you need more information to answer the question, please attach 1. We will compare your answer with the ground truth to check the correctness. If your answer is correct and accompanied by strong confidence, you will be rewarded; if your answer is incorrect but assigned strong confidence, you will be punished. The signal should be in the format of <CONFIDENCE:NUMBER>, where NUMBER ranges from 1 to 100, directly appended to your answer.\n'
+            attach_prompt = '\nBased on your answer, please attach a confidence signal ranging from 1-10 to specify whether you are certain about your answer. 1 means you are totally uncertain (strong inconfidence), while 10 means you are totally certain (strong confidence). If you need more information to answer the question, please attach 1. We will compare your answer with the ground truth to check the correctness. If your answer is correct and accompanied by strong confidence, you will be rewarded; if your answer is incorrect but assigned strong confidence, you will be punished. The signal should be in the format of <CONFIDENCE:NUMBER>, where NUMBER ranges from 1 to 10, directly appended to your answer.\n'
             for prompt, prediction, gold in zip(
                     parsed_entries, batched(generated, num_return_sequences),
                     golds):

@@ -27,7 +27,7 @@ with read_base():
         gpqa_datasets  # noqa: F401, F403
 
 # Output directory
-work_dir = './outputs/llm_judge_eval_parallel/qwen2_5_vl_72b/'
+work_dir = './outputs/llm_judge_eval_parallel/qwen2_5_vl_72b_temp0.7_promptv7/'
 dataset_type = 'gpqa'
 inference_repeat = 5
 
@@ -40,7 +40,8 @@ elif dataset_type == 'agieval':
     test_range = '[0:10]'
 elif dataset_type == 'gpqa':
     datasets = gpqa_datasets
-    test_range = '[0:100]'
+    # test_range = '[0:100]'
+    test_range = '[0:]'
 
 # for i in range(inference_repeat-1):
 #     # Create a deepcopy of the datasets, avoid modifying the inside dictionary

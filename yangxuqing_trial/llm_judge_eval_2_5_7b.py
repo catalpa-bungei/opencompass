@@ -19,28 +19,46 @@ with read_base():
     from opencompass.configs.models.qwen2_5.api_qwen_2_5_vl_7b_instruct import (
         models as inference_model,
     )
+    # from opencompass.configs.models.qwen2_5.api_qwen_2_5_7b_instruct import (
+    #     models as inference_model,
+    # )
     from opencompass.configs.datasets.mmlu.mmlu_gen import \
         mmlu_datasets  # noqa: F401, F403
     from opencompass.configs.datasets.agieval.agieval_gen import \
         agieval_datasets  
     from opencompass.configs.datasets.gpqa.gpqa_gen import \
         gpqa_datasets  # noqa: F401, F403
+    from opencompass.configs.datasets.OlympiadBench.OlympiadBench_0shot_gen_be8b13 import \
+        olympiadbench_datasets
+    from opencompass.configs.datasets.ARC_c.ARC_c_gen import \
+        ARC_c_datasets
 
 # Output directory
-work_dir = './outputs/llm_judge_eval_parallel/qwen2_5_vl_7b/'
-dataset_type = 'mmlu'  # Change to 'agieval' or 'gpqa' as needed
-inference_repeat = 5  # Number of times to repeat the inference
+work_dir = './outputs/llm_judge_eval_parallel/qwen2_5_vl_7b_beta0.1_ece_we0.1_alpha0.5_step162_temp0.7_promptv7/'
+dataset_type = 'olympiad'  # Change to 'agieval' or 'gpqa' as needed
+# inference_repeat = 5  # Number of times to repeat the inference
 
 
 if dataset_type == 'mmlu':
     datasets = mmlu_datasets
-    test_range = '[0:5]'
+    # test_range = '[0:5]'
+    test_range = '[0:]'
 elif dataset_type == 'agieval':
     datasets = agieval_datasets
-    test_range = '[0:10]'
+    # test_range = '[0:10]'
+    test_range = '[0:]'
 elif dataset_type == 'gpqa':
     datasets = gpqa_datasets
-    test_range = '[0:100]'
+    # test_range = '[0:100]'
+    test_range = '[0:]'
+elif dataset_type == 'olympiad':
+    datasets = olympiadbench_datasets
+    # test_range = '[0:100]'
+    test_range = '[0:]'
+elif dataset_type == 'arc-c':
+    datasets = ARC_c_datasets
+    # test_range = '[0:200]'
+    test_range = '[0:200]'
 
 # for i in range(inference_repeat-1):
 #     # Create a deepcopy of the datasets, avoid modifying the inside dictionary
@@ -73,7 +91,11 @@ Is the model response correct? If correct, answer "<True>"; if incorrect, answer
 
 # eval_reader_cfg = dict(input_columns=['origin_prompt','prediction','gold'], output_column='correctness')
 agieval_reader_cfg = dict(
-    input_columns=['question', 'options', 'gold'], output_column='label', train_split='test', test_range=test_range)
+    input_columns=['question', 'options', 'gold'], 
+    output_column='label', 
+    train_split='test', 
+    test_range=test_range
+)
 mmlu_reader_cfg = dict(
     input_columns=['input', 'A', 'B', 'C', 'D'],
     output_column='target',
@@ -84,6 +106,20 @@ mmlu_reader_cfg = dict(
 gpqa_reader_cfg = dict(
     input_columns=['question', 'A', 'B', 'C', 'D'],
     output_column='answer',
+    train_split='diamond',
+    test_range=test_range
+    )
+olympiadbench_reader_cfg = dict(
+    input_columns=[
+        'problem', 'language', 'subject', 'question_type', 
+        'answer_type', 'is_multiple_answer', 'unit', 'questions'
+    ], 
+    output_column='solution',
+    test_range=test_range
+)
+arc_c_reader_cfg = dict(
+    input_columns=['question', 'textA', 'textB', 'textC', 'textD'],
+    output_column='answerKey',
     test_range=test_range
     )
 
@@ -93,6 +129,10 @@ agieval_path = '/root/.cache/opencompass/data/agieval/test/'
 agieval_surfix = '.jsonl'
 gpqa_path = '/root/.cache/opencompass/data/gpqa/'
 gpqa_surfix = 'gpqa_diamond.csv'
+olympiadbench_path = '/root/.cache/opencompass/data/olympiadbench/test/'
+olympiadbench_surfix = '.jsonl'
+arc_c_path = '/root/.cache/opencompass/data/ARC/ARC-c/'
+arc_c_surfix = '.jsonl'
 
 if dataset_type == 'mmlu':
     dataset_reader_cfg = mmlu_reader_cfg
@@ -106,6 +146,14 @@ elif dataset_type == 'gpqa':
     dataset_reader_cfg = gpqa_reader_cfg
     dataset_path = gpqa_path
     dataset_surfix = gpqa_surfix
+elif dataset_type == 'olympiad':
+    dataset_reader_cfg = olympiadbench_reader_cfg
+    dataset_path = olympiadbench_path
+    dataset_surfix = olympiadbench_surfix
+elif dataset_type == 'arc-c':
+    dataset_reader_cfg = arc_c_reader_cfg
+    dataset_path = arc_c_path
+    dataset_surfix = arc_c_surfix
 
 # Inference configuration for the model being evaluated
 infer_cfg = dict(
@@ -129,11 +177,17 @@ from opencompass.datasets import AGIEvalDataset_v2, AGIEvalEvaluator
 from opencompass.datasets import GPQADataset, GPQA_Simple_Eval_postprocess, GPQAEvaluator
 from opencompass.utils.text_postprocessors import match_answer_pattern
 from opencompass.utils.text_postprocessors import first_option_postprocess, first_capital_postprocess_multi
+from opencompass.evaluator import MATHVerifyEvaluator
+from opencompass.datasets import OlympiadBenchDataset, OlympiadBenchEvaluator, olympiadbench_postprocess_v2
 # Define a rule-based evaluator
 acc_evaluator = dict(type=AccEvaluator)
 agi_evaluator = dict(type=AGIEvalEvaluator)
 gpqa_evaluator = dict(type=GPQAEvaluator)
 gpqa_pred_postprocessor = dict(type=GPQA_Simple_Eval_postprocess)
+olympiadbench_evaluator = dict(type=OlympiadBenchEvaluator, version='v2')
+arc_c_evaluator = dict(type=AccEvaluator)
+arc_c_pred_role = 'BOT'
+arc_c_postprocessor = dict(type=first_option_postprocess, options='ABCD')
 
 agieval_cloze_sets = ['gaokao-mathcloze', 'math']
 agieval_single_choice_sets = [    'gaokao-chinese',    'gaokao-english',    'gaokao-geography',    'gaokao-history',    'gaokao-biology',    'gaokao-chemistry',    'gaokao-mathqa',    'logiqa-zh',    'lsat-ar',    'lsat-lr',    'lsat-rc',    'logiqa-en',    'sat-math',    'sat-en',    'sat-en-without-passage',    'aqua-rat',]
@@ -148,6 +202,12 @@ elif dataset_type == 'agieval':
 elif dataset_type == 'gpqa':
     rule_evaluator = gpqa_evaluator
     dataset_pred_postprocessor = gpqa_pred_postprocessor
+elif dataset_type == 'olympiad':
+    rule_evaluator = olympiadbench_evaluator
+elif dataset_type == 'arc-c':
+    rule_evaluator = arc_c_evaluator
+    dataset_pred_postprocessor = arc_c_postprocessor
+    dataset_pred_role = arc_c_pred_role
 
 # construct eval_cfgs
 eval_cfgs = []

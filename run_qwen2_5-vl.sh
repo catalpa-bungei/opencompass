@@ -1,7 +1,8 @@
 conda activate opencompass-vllm
-export PYTHONPATH=/fs-computility/ai-shen/yangxuqing/opencompass/
+export PYTHONPATH=/fs-computility/wangxuhong/yangxuqing/opencompass/
 # source ~/.bashrc
-cd /fs-computility/ai-shen/yangxuqing/opencompass
+# cd /fs-computility/ai-shen/yangxuqing/opencompass
+cd /fs-computility/wangxuhong/yangxuqing/opencompass
 
 # python run.py yangxuqing_trial/qwen_2_5_vl_7B.py
 # python run.py yangxuqing_trial/qwen_2_5_vl_32B.py

@@ -27,7 +27,7 @@ with read_base():
         gpqa_datasets  # noqa: F401, F403
 
 # Output directory
-work_dir = './outputs/llm_judge_eval_parallel/qwen2_5_vl_72b/'
+work_dir = './outputs/llm_judge_eval_parallel/qwen2_5_vl_72b_temp0.7_promptv7/'
 dataset_type = 'agieval'
 inference_repeat = 5  # Number of times to repeat the inference
 
@@ -37,7 +37,8 @@ if dataset_type == 'mmlu':
     test_range = '[0:5]'
 elif dataset_type == 'agieval':
     datasets = agieval_datasets
-    test_range = '[0:10]'
+    # test_range = '[0:10]'
+    test_range = '[0:]'
 elif dataset_type == 'gpqa':
     datasets = gpqa_datasets
     test_range = '[0:100]'
