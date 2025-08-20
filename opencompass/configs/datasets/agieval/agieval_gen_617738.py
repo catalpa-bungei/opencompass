@@ -8,60 +8,17 @@ from opencompass.utils.text_postprocessors import first_option_postprocess, firs
 agieval_reader_cfg = dict(
     input_columns=['question', 'options'], output_column='label', train_split='test')
 
-combo_prompt = """Provide your best guess and the confidence that it is correct or plausible (1 to 100) for the following question. Take your uncertainty in the prompt, the task difficulty, your knowledge availability and other sources of uncertainty into account. Give
-
-ONLY the guess and CONFIDENCE, no other words or explanation. For example: “Guess: <most likely guess, as short as possible; not a complete sentence, just the guess!> 
-<CONFIDENCE:NUMBER>, where NUMBER ranges from 1 to 100, directly appended to your answer
-
-Here are five examples:
-
-Question: The fox walked from the city into the forest, what was it looking for?
-
-Choices:
-
-A. pretty flowers.
-
-B. hen house
-
-C. natural habitat
-
-D. storybook
-
-E. dense forest
-
-Guess: A
-
-<CONFIDENCE: 47>
-
-uestion: Which country is Europe’s largest silk producer?
-Guess: Environment of Italy
-<CONFIDENCE: 89>
-Question: The population of the city where Michelle was
-born is 145,826. What is the value of the 5 in the number 145,826?
-Choices:
-A. 5 thousands
-B. 5 hundreds
-C. 5 tens
-D. 5 ones
-Guess: A
-CONFIDENCE: 77
-Question: Beyond the business case for engaging in CSR
-there are a number of moral arguments relating to: negative
-_______, the _______that corporations possess and the ________
-of business and society.
-Choices:
-A. Externalities, Power, Independence
-B. Publicity, Insubstantial resources, Mutual dependence
-C. Publicity, Power, Independence
-D. Externalities, Power, Mutual dependence
-Guess: B
-<CONFIDENCE: 24>
-Question: The Moon lacks weather and climate changes like
-those on Earth. What causes the lack of weather on the Moon?
-Guess: the lack of magnetic poles
-<CONFIDENCE:8>
-"""
-attached_prompt = '\nBased on your answer, please attach a confidence signal ranging from 1-10 to specify whether you are certain about your answer. 1 means you are totally uncertain (strong inconfidence), while 10 means you are totally certain (strong confidence). If you need more information to answer the question, please attach 1. We will compare your answer with the ground truth to check the correctness. If your answer is correct and accompanied by strong confidence, you will be rewarded; if your answer is incorrect but assigned strong confidence, you will be punished. The signal should be in the format of <CONFIDENCE:NUMBER>, where NUMBER ranges from 1 to 10, directly appended to your answer.\n'
+choice_ahead_prompt = (
+                "Answer the question following this exact format: **Strict Requirements**: **Structure**: "
+                "After reasoning, output ONLY the [A/B/C/D/E...] within \\boxed{{}} format: <think> [your analysis] </think>\n "
+                "<ANSWER is: \\boxed{Your answer}> **No Extra Text**: Do not explain your answer outside<think> tags.\n"
+)
+math_ahead_prompt = (
+                "Answer the question following this exact format: **Strict Requirements**: **Structure**: "
+                "After reasoning, output ONLY the [numerical number or expression] within \\boxed{{}} format: <think> [your analysis] </think>\n "
+                "<ANSWER is: \\boxed{Your answer}> **No Extra Text**: Do not explain your answer outside<think> tags.\n"
+)
+attached_prompt = '\nPut your answer into <ANSWER is: \\boxed{Your answer}>. \nBased on your answer, please attach a confidence signal ranging from 1-10 to specify whether you are certain about your answer. 1 means you are totally uncertain (strong inconfidence), while 10 means you are totally certain (strong confidence). If you need more information to answer the question, please attach 1. We will compare your answer with the ground truth to check the correctness. If your answer is correct and accompanied by strong confidence, you will be rewarded; if your answer is incorrect but assigned strong confidence, you will be punished. The signal should be in the format of <CONFIDENCE:NUMBER>, where NUMBER ranges from 1 to 10, directly appended to your answer.The last line of your output should be in the format: <ANSWER is: \\boxed{Your answer}>|<CONFIDENCE:NUMBER>.\n'
 
 agieval_single_choice_sets = [
     'gaokao-chinese',
@@ -135,7 +92,7 @@ for _name in agieval_single_choice_sets:
             template=dict(round=[
                 dict(
                     role='HUMAN', 
-                    prompt=f'{{question}}\n{{options}}\n{_hint}\n {attached_prompt}\n')
+                    prompt=f'{choice_ahead_prompt}\n{{question}}\n{{options}}\n{_hint}\n {attached_prompt}\n')
             ])),
         retriever=dict(type=ZeroRetriever),
         inferencer=dict(type=GenInferencer, max_out_len=1024))
@@ -169,7 +126,7 @@ for _name in agieval_multiple_choices_sets:
             template=dict(round=[
                 dict(
                     role='HUMAN', 
-                    prompt=f'{{question}}\n{{options}}\n{_hint}\n {attached_prompt}\n')
+                    prompt=f'{choice_ahead_prompt}\n{{question}}\n{{options}}\n{_hint}\n {attached_prompt}\n')
             ])),
         retriever=dict(type=ZeroRetriever),
         inferencer=dict(type=GenInferencer, max_out_len=1024))
@@ -201,7 +158,7 @@ for _name in agieval_cloze_sets:
             type=PromptTemplate,
             template=dict(
                 round=[dict(role='HUMAN', 
-                            prompt=f'{{question}}\n{_hint}\n {attached_prompt}\n')])),
+                            prompt=f'{math_ahead_prompt}\n{{question}}\n{_hint}\n {attached_prompt}\n')])),
         retriever=dict(type=ZeroRetriever),
         inferencer=dict(type=GenInferencer, max_out_len=1024))
 

@@ -1,4 +1,4 @@
-conda activate opencompass-vllm
+# conda activate opencompass-vllm
 export PYTHONPATH=/fs-computility/wangxuhong/yangxuqing/opencompass/
 # source ~/.bashrc
 # cd /fs-computility/ai-shen/yangxuqing/opencompass
@@ -13,6 +13,6 @@ cd /fs-computility/wangxuhong/yangxuqing/opencompass
 # python run.py yangxuqing_trial/llm_judge_eval_only_eval.py -m eval -r /fs-computility/ai-shen/yangxuqing/opencompass/outputs/default/20250518_213703-gpqa-332b-v5-0.7
 # python run.py yangxuqing_trial/llm_judge_eval_only_eval.py -m eval -r /fs-computility/ai-shen/yangxuqing/opencompass/outputs/default/20250518_205908
 
-python run.py yangxuqing_trial/llm_judge_eval_2_5_7b_agieval.py
-python run.py yangxuqing_trial/llm_judge_eval_2_5_7b_olympiad.py 
-python run.py yangxuqing_trial/llm_judge_eval_2_5_7b_mmlu.py 
+python run.py yangxuqing_trial/llm_judge_eval_2_5_7b_agieval_proportion.py
+python run.py yangxuqing_trial/llm_judge_eval_2_5_7b_olympiad_proportion.py 
+python run.py yangxuqing_trial/llm_judge_eval_2_5_7b_mmlu_proportion.py 

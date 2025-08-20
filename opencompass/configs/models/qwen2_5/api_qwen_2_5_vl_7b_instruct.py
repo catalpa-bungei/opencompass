@@ -15,7 +15,7 @@ models = [
         key='EMPTY',
         max_seq_len=20000,
         max_out_len=8192,
-        # temperature=0.9,
+        temperature=0.7,
         batch_size=1024*8,
         query_per_second=60,
         run_cfg=dict(num_gpus=0),

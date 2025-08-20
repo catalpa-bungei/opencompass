@@ -14,7 +14,6 @@ with read_base():
 
 QUERY_TEMPLATE = """
 Answer the following multiple choice question. The last line of your response should be of the following format: 'ANSWER: $LETTER' (without quotes) where LETTER is one of ABCD. Think step by step before answering.
-\n Based on your answer, please attach a confidence signal ranging from 1-100 to specify whether you are unknown about your answer. 1 means you are totally unknown (strong inconfidence), while 100 means you are totally known (strong confidence). If you need more information to answer the question, please attach 1. We will compare your answer with the ground truth to check the correctness. If your answer is correct and accompanied by strong confidence, you will be rewarded; if your answer is incorrect but assigned strong confidence, you will be punished. The signal should be in the format of <CONFIDENCE:NUMBER>, where NUMBER ranges from 1 to 100, directly appended to your answer.\n
 {input}
 
 A) {A}
@@ -22,6 +21,12 @@ B) {B}
 C) {C}
 D) {D}
 """.strip()
+choice_ahead_prompt = (
+                "Answer the question following this exact format: **Strict Requirements**: **Structure**: "
+                "After reasoning, output ONLY the [A/B/C/D/E...] within \\boxed{{}} format: <think> [your analysis] </think>\n "
+                "<ANSWER is: \\boxed{Your answer}> **No Extra Text**: Do not explain your answer outside<think> tags.\n"
+)
+confidence_prompt = "\n Put your answer into <ANSWER is: \\boxed{Your answer}>. \nBased on your answer, please attach a confidence signal ranging from 1-10 to specify whether you are certain about your answer. 1 means you are totally uncertain (strong inconfidence), while 10 means you are totally certain (strong confidence). If you need more information to answer the question, please attach 1. We will compare your answer with the ground truth to check the correctness. If your answer is correct and accompanied by strong confidence, you will be rewarded; if your answer is incorrect but assigned strong confidence, you will be punished. The signal should be in the format of <CONFIDENCE:NUMBER>, where NUMBER ranges from 1 to 10, directly appended to your answer.The last line of your output should be in the format: <ANSWER is: \\boxed{Your answer}>|<CONFIDENCE:NUMBER>.\n"
 
 mmlu_reader_cfg = dict(
     input_columns=['input', 'A', 'B', 'C', 'D'],
@@ -35,7 +40,7 @@ for name in mmlu_all_sets:
             type=PromptTemplate,
             template=dict(
                 round=[
-                    dict(role='HUMAN', prompt=QUERY_TEMPLATE),
+                    dict(role='HUMAN', prompt=f"{choice_ahead_prompt}" + QUERY_TEMPLATE + confidence_prompt),
                 ],
             ),
         ),

@@ -32,12 +32,10 @@ with read_base():
         olympiadbench_datasets
     from opencompass.configs.datasets.ARC_c.ARC_c_gen import \
         ARC_c_datasets
-    from opencompass.configs.datasets.strategyqa.strategyqa_gen import \
-        strategyqa_datasets
 
 # Output directory
-work_dir = './outputs/llm_judge_eval_parallel/text/qwen2_5_vl_7b_beta0.1_alpha0.5_step103_temp0.7_promptv8/'
-dataset_type = 'gpqa'  # Change to 'agieval' or 'gpqa' as needed
+work_dir = './outputs/llm_judge_eval_parallel/text/qwen2_5_vl_7b_balance_beta0.1_alpha0.5_step116_temp0.7_promptv8/'
+dataset_type = 'mmlu'  # Change to 'agieval' or 'gpqa' as needed
 # inference_repeat = 5  # Number of times to repeat the inference
 
 
@@ -61,9 +59,6 @@ elif dataset_type == 'arc-c':
     datasets = ARC_c_datasets
     # test_range = '[0:200]'
     test_range = '[0:]'
-elif dataset_type == 'strategyqa':
-    datasets = strategyqa_datasets
-    test_range = '[0:100]'
 
 # for i in range(inference_repeat-1):
 #     # Create a deepcopy of the datasets, avoid modifying the inside dictionary
@@ -76,10 +71,7 @@ elif dataset_type == 'strategyqa':
 
 dataset_names = []
 for i in range(len(datasets)):
-    if dataset_type == 'strategyqa':
-        dataset_names.append("strategyqa")
-    else:
-        dataset_names.append(datasets[i]['name'])
+    dataset_names.append(datasets[i]['name'])
 print('dataset_names: ', dataset_names)
 
 # Define your judge template
@@ -130,11 +122,6 @@ arc_c_reader_cfg = dict(
     output_column='answerKey',
     test_range=test_range
     )
-strategyqa_reader_cfg = dict(
-    input_columns=['question'],
-    output_column='answer',
-    train_split='test',
-    test_split='test')
 
 mmlu_path = '/root/.cache/opencompass/data/mmlu/test/'
 mmlu_surfix = '_test.csv'
@@ -146,8 +133,6 @@ olympiadbench_path = '/root/.cache/opencompass/data/olympiadbench/test/'
 olympiadbench_surfix = '.jsonl'
 arc_c_path = '/root/.cache/opencompass/data/ARC/ARC-c/'
 arc_c_surfix = '.jsonl'
-strategyqa_path = '/root/.cache/opencompass/data/strategyqa/test/'
-strategyqa_surfix = '.jsonl'
 
 if dataset_type == 'mmlu':
     dataset_reader_cfg = mmlu_reader_cfg
@@ -169,10 +154,6 @@ elif dataset_type == 'arc-c':
     dataset_reader_cfg = arc_c_reader_cfg
     dataset_path = arc_c_path
     dataset_surfix = arc_c_surfix
-elif dataset_type == 'strategyqa':
-    dataset_reader_cfg = strategyqa_reader_cfg
-    dataset_path = strategyqa_path
-    dataset_surfix = strategyqa_surfix
 
 # Inference configuration for the model being evaluated
 infer_cfg = dict(
@@ -198,7 +179,6 @@ from opencompass.utils.text_postprocessors import match_answer_pattern
 from opencompass.utils.text_postprocessors import first_option_postprocess, first_capital_postprocess_multi
 from opencompass.evaluator import MATHVerifyEvaluator
 from opencompass.datasets import OlympiadBenchDataset, OlympiadBenchEvaluator, olympiadbench_postprocess_v2
-from opencompass.datasets import StrategyQADataset, strategyqa_pred_postprocess, strategyqa_dataset_postprocess
 # Define a rule-based evaluator
 acc_evaluator = dict(type=AccEvaluator)
 agi_evaluator = dict(type=AGIEvalEvaluator)
@@ -228,10 +208,6 @@ elif dataset_type == 'arc-c':
     rule_evaluator = arc_c_evaluator
     dataset_pred_postprocessor = arc_c_postprocessor
     dataset_pred_role = arc_c_pred_role
-elif dataset_type == 'strategyqa':
-    rule_evaluator = acc_evaluator
-    dataset_pred_postprocessor = dict(type=strategyqa_pred_postprocess)
-    dataset_postprocessor = dict(type=strategyqa_dataset_postprocess)
 
 # construct eval_cfgs
 eval_cfgs = []

@@ -161,6 +161,9 @@ class GenInferencer(BaseInferencer):
                 inference_repeat = 1
                 repeated_entries = []
                 true_pattern = r'<true>|<false>|<no answer>'
+                boxed_pattern = r'boxed\{((?:[^{}]|\{[^}]*})*)\}'
+                answer_pattern = r'<answer is:\s*(.*?)>'
+                answer_pattern2 = r'<answer :\s*(.*?)>'
                 print(f"Orinigal length of entry: {len(entry)}")
                 probing_results = self.model.generate_from_template(
                     entry[0:3], max_out_len=self.max_out_len, **extra_gen_kwargs)
@@ -185,7 +188,9 @@ class GenInferencer(BaseInferencer):
             # 5-3. Save current output
             confidence_pattern = r'confidence:\s*(\d+)'
             true_pattern = r'<true>|<false>|<no answer>'
-            attach_prompt = '\nBased on your answer, please attach a confidence signal ranging from 1-10 to specify whether you are certain about your answer. 1 means you are totally uncertain (strong inconfidence), while 10 means you are totally certain (strong confidence). If you need more information to answer the question, please attach 1. We will compare your answer with the ground truth to check the correctness. If your answer is correct and accompanied by strong confidence, you will be rewarded; if your answer is incorrect but assigned strong confidence, you will be punished. The signal should be in the format of <CONFIDENCE:NUMBER>, where NUMBER ranges from 1 to 10, directly appended to your answer.\n'
+            whether_rethinking = True
+            max_rethinking_times = 31
+            attach_prompt = '\nPut your answer into <ANSWER is: \\boxed{Your answer}>. \nBased on your answer, please attach a confidence signal ranging from 1-10 to specify whether you are certain about your answer. 1 means you are totally uncertain (strong inconfidence), while 10 means you are totally certain (strong confidence). If you need more information to answer the question, please attach 1. We will compare your answer with the ground truth to check the correctness. If your answer is correct and accompanied by strong confidence, you will be rewarded; if your answer is incorrect but assigned strong confidence, you will be punished. The signal should be in the format of <CONFIDENCE:NUMBER>, where NUMBER ranges from 1 to 10, directly appended to your answer.The last line of your output should be in the format: <ANSWER is: \\boxed{Your answer}>|<CONFIDENCE:NUMBER>.\n'
             for prompt, prediction, gold in zip(
                     parsed_entries, batched(generated, num_return_sequences),
                     golds):
@@ -213,9 +218,70 @@ class GenInferencer(BaseInferencer):
                                 'True pattern in judge output already found! It is evaluation! --------------------------------------'
                             )
                     else: 
+                        confidence_level = re.findall(confidence_pattern, prediction_lower)[-1]
                         logger.info(
-                            f'Confidence signal found in the output.\n -----------------------------------------\n'
+                            f'Confidence signal {confidence_level} found in the output. \n -----------------------------------------\n'
                         )
+                        if whether_rethinking:
+                            previous_answers = ""
+                            previous_prediction = prediction
+                            confidence_level = re.findall(confidence_pattern, prediction.lower())[-1]
+                            confidence_level = int(confidence_level)
+                            for rethink_time in range(max_rethinking_times):
+                                if re.search(confidence_pattern, previous_prediction.lower()) is not None:
+                                    confidence_level = re.findall(confidence_pattern, previous_prediction.lower())[-1]
+                                    confidence_level = int(confidence_level)
+                                    if 1 <= confidence_level <=5:
+                                        # please change whether_rethinking
+                                        previous_extracted_answer_matches = re.findall(boxed_pattern, previous_prediction, re.IGNORECASE)
+                                        if previous_extracted_answer_matches:
+                                            previous_extracted_answer = previous_extracted_answer_matches[-1].strip()
+                                        else:
+                                            previous_extracted_answer_matches = re.findall(answer_pattern, previous_prediction, re.IGNORECASE)
+                                            if previous_extracted_answer_matches:
+                                                previous_extracted_answer = previous_extracted_answer_matches[-1].strip()
+                                            else:
+                                                if "answer" in previous_prediction.lower():
+                                                    previous_extracted_answer = previous_prediction.split('ANSWER')[-1].strip()
+                                                    previous_extracted_answer = previous_extracted_answer.split('answer')[-1].strip()
+                                                    if "confidence" in previous_extracted_answer.lower():
+                                                        previous_extracted_answer = previous_extracted_answer.split('<CONFIDENCE')[0].strip()
+                                                        previous_extracted_answer = previous_extracted_answer.split('<confidence')[0].strip()
+                                                        previous_extracted_answer = previous_extracted_answer.split('confidence')[0].strip()
+                                                        previous_extracted_answer = previous_extracted_answer.split('CONFIDENCE')[0].strip()
+                                                else:
+                                                    previous_extracted_answer = "<NO ANSWER>"
+                                        previous_answers += f"<{previous_extracted_answer}|CONFIDENCE:{confidence_level}>," 
+                                        new_prompt = f"Your previous trials give possibly wrong answers: [{previous_answers}]. Please rethink about the question, check whether the previous answers are wrong, and give a correct answer.\n" + prompt
+                                        single_entry = [new_prompt]
+                                        prediction = self.model.generate_from_template(
+                                        single_entry,
+                                        max_out_len=self.max_out_len,
+                                        **extra_gen_kwargs)[0]
+                                        logger.info(
+                                            f'After rethinking time {rethink_time}:\nnew_prompt:\n{new_prompt}\n\nprevious_prediction:\n[{previous_prediction}]\nnew_prediction:\n{prediction}\n -----------------------------------------\n'
+                                        )
+                                        previous_prediction = prediction
+                                        prediction = f"Previous predictions are:[{[previous_answers]}]" + prediction
+                                        if rethink_time == max_rethinking_times - 1:
+                                            previous_answers = ""
+                                    elif 6 <= confidence_level <= 10:
+                                        previous_answers = ""
+                                        break
+                                    
+                                else:
+                                    prompt_enhanced = prompt + attach_prompt
+                                    single_entry = [prompt_enhanced]
+                                    prediction = self.model.generate_from_template(
+                                        single_entry,
+                                        max_out_len=self.max_out_len,
+                                        **extra_gen_kwargs)[0]
+                                    logger.info(
+                                        f'After rethinking time {rethink_time}: Confidence not found!\nnew_prompt:\n{prompt_enhanced}\nnew_prediction:\n{prediction}\n -----------------------------------------\n'
+                                    )
+                                    previous_prediction = prediction
+                                    prediction = f"Previous predictions are:[{[previous_answers]}]" + prediction
+
                 else:
                     logger.info(
                         f'num_return_sequences: {num_return_sequences}, '

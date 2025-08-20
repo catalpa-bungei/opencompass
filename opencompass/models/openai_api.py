@@ -639,7 +639,7 @@ class OpenAISDK(OpenAI):
 
         assert isinstance(input, (str, PromptList))
 
-        print("This is OpenAI SDK class in repo, and the temperature is: ", temperature)
+        print("This is OpenAI SDK class _generate in repo, and the temperature is: ", temperature)
         max_out_len = 8192
         print("\nMax out len is: ", max_out_len)
         messages, max_out_len = self._preprocess_messages(
